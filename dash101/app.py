@@ -1,83 +1,53 @@
+# -*- coding: utf-8 -*-
 from dash import Dash, dcc, html, Input, Output
-import plotly.express as px
 
-import pandas as pd
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
-app = Dash(__name__)
+app = Dash(__name__, external_stylesheets=external_stylesheets)
 
-df = pd.read_csv('https://plotly.github.io/datasets/country_indicators.csv')
-
+all_options = {
+    'America': ['New York City', 'San Francisco', 'Cincinnati'],
+    'Canada': [u'Montréal', 'Toronto', 'Ottawa']
+}
 app.layout = html.Div([
-    html.Div([
+    dcc.RadioItems(
+        list(all_options.keys()),
+        'America',
+        id='countries-radio',
+    ),
 
-        html.Div([
-            dcc.Dropdown(
-                df['Indicator Name'].unique(),
-                'Fertility rate, total (births per woman)',
-                id='xaxis-column'
-            ),
-            dcc.RadioItems(
-                ['Linear', 'Log'],
-                'Linear',
-                id='xaxis-type',
-                inline=True
-            )
-        ], style={'width': '48%', 'display': 'inline-block'}),
+    html.Hr(),
 
-        html.Div([
-            dcc.Dropdown(
-                df['Indicator Name'].unique(),
-                'Life expectancy at birth, total (years)',
-                id='yaxis-column'
-            ),
-            dcc.RadioItems(
-                ['Linear', 'Log'],
-                'Linear',
-                id='yaxis-type',
-                inline=True
-            )
-        ], style={'width': '48%', 'float': 'right', 'display': 'inline-block'})
-    ]),
+    dcc.RadioItems(id='cities-radio'),
 
-    dcc.Graph(id='indicator-graphic'),
+    html.Hr(),
 
-    dcc.Slider(
-        df['Year'].min(),
-        df['Year'].max(),
-        step=None,
-        id='year--slider',
-        value=df['Year'].max(),
-        marks={str(year): str(year) for year in df['Year'].unique()},
-
-    )
+    html.Div(id='display-selected-values')
 ])
 
 
 @app.callback(
-    Output('indicator-graphic', 'figure'),
-    Input('xaxis-column', 'value'),
-    Input('yaxis-column', 'value'),
-    Input('xaxis-type', 'value'),
-    Input('yaxis-type', 'value'),
-    Input('year--slider', 'value'))
-def update_graph(xaxis_column_name, yaxis_column_name,
-                 xaxis_type, yaxis_type,
-                 year_value):
-    dff = df[df['Year'] == year_value]
+    Output('cities-radio', 'options'),
+    Input('countries-radio', 'value'))
+def set_cities_options(selected_country):
+    return [{'label': i, 'value': i} for i in all_options[selected_country]]
 
-    fig = px.scatter(x=dff[dff['Indicator Name'] == xaxis_column_name]['Value'],
-                     y=dff[dff['Indicator Name'] == yaxis_column_name]['Value'],
-                     hover_name=dff[dff['Indicator Name'] == yaxis_column_name]['Country Name'])
 
-    fig.update_layout(margin={'l': 40, 'b': 40, 't': 10, 'r': 0}, hovermode='closest')
+@app.callback(
+    Output('cities-radio', 'value'),
+    Input('cities-radio', 'options'))
+def set_cities_value(available_options):
+    return available_options[1]['value']
 
-    fig.update_xaxes(title=xaxis_column_name,
-                     type='linear' if xaxis_type == 'Linear' else 'log')
 
-    fig.update_yaxes(title=yaxis_column_name,
-                     type='linear' if yaxis_type == 'Linear' else 'log')
-
-    return fig
+@app.callback(
+    Output('display-selected-values', 'children'),
+    Input('countries-radio', 'value'),
+    Input('cities-radio', 'value'))
+def set_display_children(selected_country, selected_city):
+    return u'{} is a city in {}'.format(
+        selected_city, selected_country,
+    )
 
 
 if __name__ == '__main__':
